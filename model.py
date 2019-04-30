@@ -1,16 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr 30 10:13:21 2019
-
-@author: hp
-"""
-
-
 import mysql.connector as sql
 import pandas as pd
 import numpy as np
-
+import mlflow
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import mlflow.sklearn
 #creating connection
+"""
 db_connection = sql.connect(host='34.85.64.241', database='jtsboard_new', user='jts', password='Jts5678?')
 db_cursor = db_connection.cursor()
 
@@ -131,7 +126,7 @@ clean= clean[pd.notnull(clean[0])]
 features=clean.iloc[:,[0,1]].values
 features=pd.DataFrame(features)
 
-"""
+
 features=pd.to_datetime(features[0])
 features= features.replace(np.nan, 0)
 #convert date column to datetime and split to individuaal 'year', 'month', 'date'
@@ -139,7 +134,7 @@ features[0] = features[0].apply(pd.to_datetime)
 features['year'] = [i.year for i in features[0]]
 features['month'] = [i.month for i in features[0]]
 features['day'] = [i.day for i in features[0]]
-"""
+
 #labels
 labels=clean.iloc[:,[2,3,4]].values
 labels=pd.DataFrame(labels)
@@ -263,43 +258,32 @@ import pandas as pd
 
 #reading csv file
 data = pd.read_csv('jtstsales.csv')
-
 #fetch only nan free data
 data = data[pd.notnull(data['d'])]
 #fetch all data of '102'
 user_102=data[data['u']==102.0]
-
 #reset index
 user_102=user_102.reset_index()
 #delete index
 del user_102['index']
 user_102.head()
-
 #print single date
 a=user_102['d'][0]
-
 #convert date into datetime
 user_102['d']=pd.to_datetime(user_102['d'])
-
 #split date into day, month, year columns
 user_102['Day']=user_102['d'].apply(lambda x:x.day)
 user_102['Month']=user_102['d'].apply(lambda x:x.month)
 user_102['Year']=user_102['d'].apply(lambda x:x.year)
-
 user_102.head()
-
 #convert day , month, year into integer
 user_102.Day=user_102.Day.apply(lambda x: int(x))
 user_102.Month=user_102.Month.apply(lambda x: int(x))
 user_102.Year=user_102.Year.apply(lambda x: int(x))
-
 #drop nan all row acording to date columns
 user_102=user_102.dropna(subset=['d'])
-
 #sum datewise all columns
 g = user_102[['s','Day','Month','Year']].groupby(['Day','Month','Year']).sum()
-
-
 g=pd.DataFrame(g)
 #g=g.sort_values('Year')
 g=g.reset_index()
@@ -307,105 +291,11 @@ g=g.reset_index()
 #features
 featuresx=g.loc[:,["Day","Month","Year"]].values
 featuresx=pd.DataFrame(features, columns=["d","m","y"])
-
 #labels
 labelsy=g.loc[:,"s"].values
-labelsy=pd.DataFrame(labels, columns=["s"])
-
-#splitting dataset in training and testing dataset
-# Splitting the dataset into the Training set and Test set
-from sklearn.model_selection import train_test_split
-features_train,features_test,labels_train,labels_test=train_test_split(featuresx,labelsy,test_size=0.2,random_state=0)
-
-#features scaling
-#from sklearn.preprocessing import StandardScaler
-#sc=StandardScaler()
-#features_train=sc.fit_transform(features_train)
-#features_test=sc.transform(features_test)
-
-#create model
-#Fitting Multiple Linear Regression to the Training set
-from sklearn.linear_model import LinearRegression
-clf=LinearRegression()
-clf.fit(features_train,labels_train)
-
-#prediction on features_test
-# Predicting the Test set results
-prediction=clf.predict(features_test).astype('int64')
-
-df=pd.DataFrame(prediction).astype('int64')
-
-
-pred_features1=np.array([[27,4,2019],[28,4,2019],[29,4,2019],[30,4,2019],[1,5,2019],[2,5,2019]])
-pred_features1=pd.DataFrame(pred_features1, columns=["d","m","y"])
-pred_result1=clf.predict(pred_features1).astype('int64')
-pred_result1=pd.DataFrame(pred_result1, columns=["s"])
-
-pred=pd.concat([pred_features1, pred_result1], axis=1)
-pred=pred.sort_values('y')
-
-
-import pickle
-#serializing our model to a file called model.pkl
-pickle.dump(clf, open("modeld.pkl","wb"))
-#loading a model from a file called model.pkl
-
-model_cold = list(features.columns)
-pickle.dump(model_cold, open('model_columnsd.pkl',"wb"))
-print("Models columns dumped!")
-
-
-with open('modeld.pkl', 'rb') as handle:
-    regressor = pickle.load(handle)   
-
-pred_features2=np.array([[24,3,2019],[25,3,2019],[26,3,2019],[27,3,2019]])
-pred_result2=clf.predict(pred_features1).astype('int64')
-
-
-#monthwise
-
-#reading csv file
-data = pd.read_csv('jtstsales.csv')
-
-#fetch only nan free data
-data = data[pd.notnull(data['d'])]
-user_102=data[data['u']==102.0]
-
-user_102=user_102.reset_index()
-del user_102['index']
-user_102.head()
-
-
-a=user_102['d'][0]
-
-
-user_102['d']=pd.to_datetime(user_102['d'])
-
-user_102['Month']=user_102['d'].apply(lambda x:x.month)
-user_102['Year']=user_102['d'].apply(lambda x:x.year)
-user_102['Day']=user_102['d'].apply(lambda x:x.day)
-
-user_102.head()
-
-user_102.Month=user_102.Month.apply(lambda x: int(x))
-user_102.Year=user_102.Year.apply(lambda x: int(x))
-
-user_102=user_102.dropna(subset=['d'])
-
-g = user_102[['s','Month','Year']].groupby(['Month','Year']).sum()
-
-
-g=pd.DataFrame(g)
-#g=g.sort_values('Year')
-g=g.reset_index()
- 
-
-features=g.loc[:,["Month","Year"]].values
-features=pd.DataFrame(features, columns=["m","y"])
-
-
-labels=g.loc[:,"s"].values
-labels=pd.DataFrame(labels, columns=["s"])
+labelsy=pd.DataFrame(labels, columns=["s"])"""
+features = np.random.randn(100)
+labels = np.random.randn(100)
 
 #splitting dataset in training and testing dataset
 # Splitting the dataset into the Training set and Test set
@@ -418,287 +308,260 @@ features_train,features_test,labels_train,labels_test=train_test_split(features,
 #features_train=sc.fit_transform(features_train)
 #features_test=sc.transform(features_test)
 
+#create model
+#Fitting Multiple Linear Regression to the Training set
+try:
+
+    with mlflow.start_run():
+        from sklearn.linear_model import LinearRegression
+        clf=LinearRegression()
+        clf.fit(features_train.reshape(-1, 1),labels_train)
+    
+    #prediction on features_test
+    # Predicting the Test set results
+        prediction=clf.predict(features_test.reshape(-1, 1))
+        rmse = np.sqrt(mean_squared_error(labels_test, prediction))
+        mae = mean_absolute_error(labels_test, prediction)
+        mlflow.log_metric("rmse", rmse)
+        mlflow.log_metric("mae", mae)
+        mlflow.sklearn.log_model(clf, "model")
+    
+        df=pd.DataFrame(prediction).astype('int64')
+except:
+    print("error")
+"""
+pred_features1=np.array([[27,4,2019],[28,4,2019],[29,4,2019],[30,4,2019],[1,5,2019],[2,5,2019]])
+pred_features1=pd.DataFrame(pred_features1, columns=["d","m","y"])
+pred_result1=clf.predict(pred_features1).astype('int64')
+pred_result1=pd.DataFrame(pred_result1, columns=["s"])
+pred=pd.concat([pred_features1, pred_result1], axis=1)
+pred=pred.sort_values('y')
+import pickle
+#serializing our model to a file called model.pkl
+pickle.dump(clf, open("modeld.pkl","wb"))
+#loading a model from a file called model.pkl
+model_cold = list(features.columns)
+pickle.dump(model_cold, open('model_columnsd.pkl',"wb"))
+print("Models columns dumped!")
+with open('modeld.pkl', 'rb') as handle:
+    regressor = pickle.load(handle)   
+pred_features2=np.array([[24,3,2019],[25,3,2019],[26,3,2019],[27,3,2019]])
+pred_result2=clf.predict(pred_features1).astype('int64')
+#monthwise
+#reading csv file
+data = pd.read_csv('jtstsales.csv')
+#fetch only nan free data
+data = data[pd.notnull(data['d'])]
+user_102=data[data['u']==102.0]
+user_102=user_102.reset_index()
+del user_102['index']
+user_102.head()
+a=user_102['d'][0]
+user_102['d']=pd.to_datetime(user_102['d'])
+user_102['Month']=user_102['d'].apply(lambda x:x.month)
+user_102['Year']=user_102['d'].apply(lambda x:x.year)
+user_102['Day']=user_102['d'].apply(lambda x:x.day)
+user_102.head()
+user_102.Month=user_102.Month.apply(lambda x: int(x))
+user_102.Year=user_102.Year.apply(lambda x: int(x))
+user_102=user_102.dropna(subset=['d'])
+g = user_102[['s','Month','Year']].groupby(['Month','Year']).sum()
+g=pd.DataFrame(g)
+#g=g.sort_values('Year')
+g=g.reset_index()
+ 
+features=g.loc[:,["Month","Year"]].values
+features=pd.DataFrame(features, columns=["m","y"])
+labels=g.loc[:,"s"].values
+labels=pd.DataFrame(labels, columns=["s"])
+#splitting dataset in training and testing dataset
+# Splitting the dataset into the Training set and Test set
+from sklearn.model_selection import train_test_split
+features_train,features_test,labels_train,labels_test=train_test_split(features,labels,test_size=0.2,random_state=0)
+#features scaling
+#from sklearn.preprocessing import StandardScaler
+#sc=StandardScaler()
+#features_train=sc.fit_transform(features_train)
+#features_test=sc.transform(features_test)
 #create model
 #Fitting Multiple Linear Regression to the Training set
 from sklearn.linear_model import LinearRegression
 regressor=LinearRegression()
 regressor.fit(features_train,labels_train)
-
 #prediction on features_test
 # Predicting the Test set results
 prediction=regressor.predict(features_test).astype('int64')
-
 df=pd.DataFrame(prediction).astype('int64')
-
-
-
 pred_features1=np.array([[3,2019],[4,2019],[5,2019],[6,2019]])
 pred_features1=pd.DataFrame(pred_features1, columns=["m", "y"])
 pred_result1=regressor.predict(pred_features1).astype('int64')
 pred_result1=pd.DataFrame(pred_result1, columns=["s"])
-
 pred=pd.concat([pred_features1, pred_result1], axis=1)
 pred=pred.sort_values('y')
-
-
 import datetime
 import matplotlib.pyplot as plt
 pred['m']=pred['m'].apply(lambda x : datetime.date(1900,x, 1).strftime('%B'))
 f, ax = plt.subplots(figsize=(18,5))
 barlist=plt.bar(pred['m'],pred['s'])
-
-
-
-
 # Save your model
 from sklearn.externals import joblib
 joblib.dump(regressor, 'model.pkl')
 print("Model dumped!")
-
 # Load the model that you just saved
 regressor = joblib.load('model.pkl')
-
 # Saving the data columns from training
 model_columns = list(features.columns)
 joblib.dump(model_columns, 'model_columns.pkl')
 print("Models columns dumped!")
-
 print(model_columns)
-
 import pickle
 #serializing our model to a file called model.pkl
 pickle.dump(regressor, open("model.pkl","wb"))
 #loading a model from a file called model.pkl
-
 model_columns = list(features.columns)
 pickle.dump(model_columns, open('model_columns.pkl',"wb"))
 print("Models columns dumped!")
-
-
-
-
 import datetime
 import matplotlib.pyplot as plt
 g['Month']=g['Month'].apply(lambda x : datetime.date(1900,x, 1).strftime('%B'))
 f, ax = plt.subplots(figsize=(18,5))
 barlist=plt.bar(g['Month'],g['s'])
-
-
-
-
 #yearwise
-
 #reading csv file
 data = pd.read_csv('jtstsales.csv')
-
 #fetch only nan free data
 data = data[pd.notnull(data['d'])]
 user_102=data[data['u']==102.0]
-
 user_102=user_102.reset_index()
 del user_102['index']
 user_102.head()
-
-
 a=user_102['d'][0]
-
-
 user_102['d']=pd.to_datetime(user_102['d'])
-
-
 user_102['Year']=user_102['d'].apply(lambda x:x.year)
-
 user_102.head()
-
-
 user_102.Year=user_102.Year.apply(lambda x: int(x))
-
 user_102=user_102.dropna(subset=['d'])
-
 g = user_102[['s','Year']].groupby(['Year']).sum()
-
-
 g=pd.DataFrame(g)
 #g=g.sort_values('Year')
 g=g.reset_index()
  
-
 features=g.loc[:,["Year"]].values
 features=pd.DataFrame(features, columns=["y"])
-
-
 labels=g.loc[:,"s"].values
 labels=pd.DataFrame(labels, columns=["s"])
-
 #splitting dataset in training and testing dataset
 # Splitting the dataset into the Training set and Test set
 from sklearn.model_selection import train_test_split
 features_train,features_test,labels_train,labels_test=train_test_split(features,labels,test_size=0.2,random_state=0)
-
 #features scaling
 #from sklearn.preprocessing import StandardScaler
 #sc=StandardScaler()
 #features_train=sc.fit_transform(features_train)
 #features_test=sc.transform(features_test)
-
 #create model
 #Fitting Multiple Linear Regression to the Training set
 from sklearn.linear_model import LinearRegression
 clfyear=LinearRegression()
 clfyear.fit(features_train,labels_train)
-
 #prediction on features_test
 # Predicting the Test set results
 prediction=clfyear.predict(features_test).astype('int64')
-
 df=pd.DataFrame(prediction).astype('int64')
-
-
-
 pred_features2=np.array([[2020]])
 pred_features2=pd.DataFrame(pred_features2, columns=["y"])
 pred_result2=clfyear.predict(pred_features2).astype('int64')
 pred_result2=pd.DataFrame(pred_result2, columns=["s"])
-
 pred2=pd.concat([pred_features2, pred_result2], axis=1)
 pred2=pred2.sort_values('y')
-
      
-
-
-
 import pickle
 #serializing our model to a file called model.pkl
 pickle.dump(clfyear, open("modely.pkl","wb"))
 #loading a model from a file called model.pkl
-
 model_coly = list(features.columns)
 pickle.dump(model_coly, open('model_columnsy.pkl',"wb"))
 print("Models columns dumped!")
-
-
 with open('modely.pkl', 'rb') as handle:
     regressor = pickle.load(handle)   
-
 pred_features2=np.array([[2019],[2020],[2021],[2022]])
 pred_result2=clfyear.predict(pred_features2).astype('int64')
-
-
-
 #weekwise
 import datetime
 import numpy as np
 import pandas as pd
 #reading csv file
 data = pd.read_csv('jtstsales.csv')
-
 #fetch only nan free data
 data = data[pd.notnull(data['d'])]
 user_102=data[data['u']==102.0]
-
 user_102=user_102.reset_index()
 del user_102['index']
 user_102.head()
-
-
 a=user_102['d'][0]
-
-
 user_102['d']=pd.to_datetime(user_102['d'])
 user_102['Week'] = user_102['d'].dt.strftime('%U')
-
-
 user_102['Year']=user_102['d'].apply(lambda x:x.year)
-
 user_102.head()
-
 user_102.Week=user_102.Week.apply(lambda x: int(x))
 user_102.Year=user_102.Year.apply(lambda x: int(x))
-
 user_102=user_102.dropna(subset=['d'])
-
 g = user_102[['s','Week','Year']].groupby(['Week','Year']).sum()
-
-
 g=pd.DataFrame(g)
 #g=g.sort_values('Year')
 g=g.reset_index()
  
-
 features=g.loc[:,["Week","Year"]].values
 features=pd.DataFrame(features, columns=["w","y"])
-
-
 labels=g.loc[:,"s"].values
 labels=pd.DataFrame(labels, columns=["s"])
-
 #splitting dataset in training and testing dataset
 # Splitting the dataset into the Training set and Test set
 from sklearn.model_selection import train_test_split
 features_train,features_test,labels_train,labels_test=train_test_split(features,labels,test_size=0.2,random_state=0)
-
 #features scaling
 #from sklearn.preprocessing import StandardScaler
 #sc=StandardScaler()
 #features_train=sc.fit_transform(features_train)
 #features_test=sc.transform(features_test)
-
 #create model
 #Fitting Multiple Linear Regression to the Training set
 from sklearn.linear_model import LinearRegression
 clfweek=LinearRegression()
 clfweek.fit(features_train,labels_train)
-
 #prediction on features_test
 # Predicting the Test set results
 prediction=clfweek.predict(features_test).astype('int64')
-
 df=pd.DataFrame(prediction).astype('int64')
-
-
-
 pred_features3=np.array([[3,2019],[4,2019],[5,2019],[6,2019]])
 pred_features3=pd.DataFrame(pred_features3, columns=["w", "y"])
 pred_result3=clfweek.predict(pred_features3).astype('int64')
 pred_result3=pd.DataFrame(pred_result3, columns=["s"])
-
 pred=pd.concat([pred_features3, pred_result3], axis=1)
 pred=pred.sort_values('y')
-
-
 import datetime
 import matplotlib.pyplot as plt
 pred['m']=pred['m'].apply(lambda x : datetime.date(1900,x, 1).strftime('%B'))
 f, ax = plt.subplots(figsize=(18,5))
 barlist=plt.bar(pred['m'],pred['s'])
-
-
-
-
 # Save your model
 from sklearn.externals import joblib
 joblib.dump(regressor, 'model.pkl')
 print("Model dumped!")
-
 # Load the model that you just saved
 regressor = joblib.load('model.pkl')
-
 # Saving the data columns from training
 model_columns = list(features.columns)
 joblib.dump(model_columns, 'model_columns.pkl')
 print("Models columns dumped!")
-
 print(model_columns)
-
 import pickle
 #serializing our model to a file called model.pkl
 pickle.dump(clfweek, open("modelw.pkl","wb"))
 #loading a model from a file called model.pkl
-
 model_colw = list(features.columns)
 pickle.dump(model_colw, open('model_columnsw.pkl',"wb"))
 print("Models columns dumped!")
-
-
+"""
 
 
